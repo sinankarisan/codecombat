@@ -81,8 +81,8 @@ module.exports = class WebSurfaceView extends CocoView
 
   onIframeMessage: (event) =>
     origin = event.origin or event.originalEvent.origin
-    unless origin is window.location.origin
-      return console.log 'Ignoring message from bad origin:', origin
+    unless /^https?:\/\/codecombatprojects.com$/.test origin
+      return console.log 'Ignoring message from bad origin:', origin, 'doesn\'t match', window.location.origin
     unless event.source is @iframe.contentWindow
       return console.log 'Ignoring message from somewhere other than our iframe:', event.source
     switch event.data.type

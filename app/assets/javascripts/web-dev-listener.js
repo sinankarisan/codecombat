@@ -11,7 +11,7 @@ var virtualScripts;
 var goalStates;
 
 var allowedOrigins = [
-    /https:\/\/codecombat\.com/,
+    /https?:\/\/codecombat\.com(:3000)?/,
     /http:\/\/localhost:3000/,
     /http:\/\/direct\.codecombat\.com/,
     /http:\/\/staging\.codecombat\.com/,

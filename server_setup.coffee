@@ -52,6 +52,32 @@ developmentLogging = (tokens, req, res) ->
   s += ' (proxied)' if req.proxied
   return s
 
+setupDomainFilterMiddleware = (app) ->
+  # if config.isProduction
+  if true
+    unsafePaths = [
+      /^\/web-dev-iframe\.html$/
+      /^\/javascripts\/web-dev-listener\.js$/
+      /^\/javascripts\/workers\/aether_worker\.js$/
+    ]
+    serveFromBoth = [
+      /^\/javascripts\/app\/vendor\/aether-html\.js$/
+      /^\/file\/db\/thang.type\/[a-f0-9]+\/.*$/
+      /^\/images\/.*$/
+    ]
+    app.use (req, res, next) ->
+      if _.any(serveFromBoth, (path) -> path.test(req.path))
+        next()
+      else if _.any(unsafePaths, (path) -> path.test(req.path))
+        if req.host isnt 'codecombatprojects.com'
+          res.redirect('http://codecombatprojects.com' + path)
+        else
+          next()
+      else if req.host isnt 'codecombat.com'
+        res.redirect('http://codecombat.com' + path)
+      else
+        next()
+
 setupErrorMiddleware = (app) ->
   app.use (err, req, res, next) ->
     if err
@@ -177,6 +203,7 @@ exports.setupMiddleware = (app) ->
   setupPerfMonMiddleware app
   setupCountryRedirectMiddleware app, "china", "CN", "zh", config.chinaDomain
   setupCountryRedirectMiddleware app, "brazil", "BR", "pt-BR", config.brazilDomain
+  setupDomainFilterMiddleware app
   setupMiddlewareToSendOldBrowserWarningWhenPlayersViewLevelDirectly app
   setupExpressMiddleware app
   setupPassportMiddleware app
