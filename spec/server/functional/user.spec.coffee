@@ -13,6 +13,10 @@ facebook = require '../../../server/lib/facebook'
 gplus = require '../../../server/lib/gplus'
 sendwithus = require '../../../server/sendwithus'
 Promise = require 'bluebird'
+Achievement = require '../../../server/models/Achievement'
+EarnedAchievement = require '../../../server/models/EarnedAchievement'
+LevelSession = require '../../../server/models/LevelSession'
+mongoose = require 'mongoose'
 
 describe 'POST /db/user', ->
 
@@ -1031,4 +1035,53 @@ describe 'POST /db/user/:handle/deteacher', ->
     expect(trialRequest).toBeNull()
     teacher = yield User.findById(teacher.id)
     expect(teacher.get('role')).toBeUndefined()
+    done()
+
+    
+fdescribe 'POST /db/user/:handle/check-for-new-achievements', ->
+  
+  beforeEach utils.wrap (done) ->
+    yield utils.clearModels [Achievement, EarnedAchievement, LevelSession, User]
+    done()
+    
+  it 'finds new achievements and awards them to the user', utils.wrap (done) ->
+    user = yield utils.initUser({points: 100})
+    yield utils.loginUser(user)
+    url = utils.getURL("/db/user/#{user.id}/check-for-new-achievements")
+    json = true
+    [res, body] = yield request.postAsync({ url, json })
+
+#    earned = yield EarnedAchievement.findOne()
+#    console.log 'earned', earned
+#    achievement = Achievement.findById(earned.get('achievement'))
+#    console.log 'achievement', achievement
+#    expect(earned).toBeDefined()
+#    EarnedAchievement.remove(earned)
+
+    earned = yield EarnedAchievement.count() # TODO: Figure out why this sometimes returns 1
+    expect(earned).toBe(0)
+
+    achievementURL = getURL('/db/achievement')
+    achievementJSON = {
+      collection: 'users'
+      query: {'points': {$gt: 50}}
+      userField: '_id'
+      recalculable: true
+      worth: 75
+      rewards: {
+        gems: 50
+        levels: [new mongoose.Types.ObjectId().toString()]
+      }
+      name: 'Dungeon Arena Started'
+      description: 'Started playing Dungeon Arena.'
+      related: 'a'
+    }
+
+    admin = yield utils.initAdmin()
+    yield utils.loginUser(admin)
+    [res, body] = yield request.postAsync { uri: achievementURL, json: achievementJSON }
+    expect(res.statusCode).toBe(201)
+    
+    user = yield User.findById(user.id)
+    expect(user.get('rewards')).toBeUndefined()
     done()

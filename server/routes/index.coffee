@@ -98,7 +98,7 @@ module.exports.setup = (app) ->
   app.get('/db/course_instance/:handle/course', mw.auth.checkLoggedIn(), mw.courseInstances.fetchCourse)
   
   EarnedAchievement = require '../models/EarnedAchievement'
-  app.post('/db/earned_achievement', mw.earnedAchievements.post)
+  app.post('/db/earned_achievement', mw.auth.checkLoggedIn(), mw.earnedAchievements.post)
   
   app.put('/db/user/:handle', mw.users.resetEmailVerifiedFlag)
   app.delete('/db/user/:handle', mw.users.removeFromClassrooms)

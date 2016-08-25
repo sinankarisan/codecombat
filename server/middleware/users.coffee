@@ -254,3 +254,42 @@ module.exports =
     yield user.update({ $unset: {role: ''}})
     user.set('role', undefined)
     return res.status(200).send(user.toObject({req: req}))
+
+    
+  checkForNewAchievement: wrap (req, res) ->
+    user = req.user
+    
+    lastAchievementChecked = user.get('lastAchievementChecked') or user._id
+    achievement = yield Achievement.findOne({ _id: { $gt: lastAchievementChecked }}).sort({_id:1})
+
+    if not achievement
+      userUpdate = { 'lastAchievementChecked': new mongoose.Types.ObjectId() }
+      user.update(userUpdate)
+      return res.send(userUpdate)
+
+    userUpdate = { 'lastAchievementChecked': achievement._id }
+      
+    { query, collection } = achievement
+    if collection is 'users'
+      triggers = [user]
+    else if collection is 'level.sessions' and query['level.original']
+      triggers = yield LevelSessions.find({
+        'level.original': query['level.original']
+        creator: user._id
+      })
+    else
+      userUpdate = { 'lastAchievementChecked': new mongoose.Types.ObjectId() }
+      user.update(userUpdate)
+      return res.send(userUpdate)
+      
+    trigger = _.find(triggers, (trigger) -> LocalMongo.matchesQuery(trigger.toObject(), query))
+
+    if not trigger
+      user.update(userUpdate)
+      return res.send(userUpdate)
+
+    earned = yield EarnedAchievement.findOne({ achievement: achievementID, user: req.user })
+    yield EarnedAchievement.upsertFor(achievement, trigger, earned, req.user)
+    user.update(userUpdate)
+    user = yield User.findById(user.id).select({points: 1, earned: 1})
+    return res.send(user.toObject())
